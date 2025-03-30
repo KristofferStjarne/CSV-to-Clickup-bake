@@ -7,8 +7,9 @@ load_dotenv()
 
 SOURCE_CSV = os.getenv("SOURCE_CSV", "source.csv")
 DEST_CSV = os.getenv("DEST_CSV", "clickup_ready.csv")
+RELEASE_FILTER = os.getenv("RELEASE_FILTER", "all").lower()
 
-# Final cleaned headers (no "drop down", "text", "url", "users", "number", etc.)
+# Cleaned target headers
 target_headers = [
     "Task Name",
     "Priority",
@@ -69,17 +70,20 @@ def transform_csv(source_path, dest_path):
         writer.writeheader()
 
         for row in reader:
-            # Get and clean LC Phase
+            # Apply release filter
+            release_status = row.get("Release Status", "").strip().lower()
+            if RELEASE_FILTER == "released" and release_status != "released":
+                continue
+
+            # Parse LC Phase values (handle list or single)
             raw_lc_phase = row.get("LC Phase", "")
             lc_phases = []
 
             if raw_lc_phase.startswith("[") and raw_lc_phase.endswith("]"):
-                # Handle list format
                 cleaned = raw_lc_phase.strip("[]")
                 lc_phases = [p.strip().strip('"').strip("'") for p in cleaned.split(",") if p.strip()]
             else:
-                # Single value
-                lc_phases = [raw_lc_phase.strip()]
+                lc_phases = [raw_lc_phase.strip()] if raw_lc_phase.strip() else [""]
 
             for phase in lc_phases:
                 new_row = {}
